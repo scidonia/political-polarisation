@@ -1,4 +1,4 @@
-{pyproject-nix, pyproject-build-systems, cudaPackages, lib, workspace, python3, callPackage, glibc, tbb_2021_11}:
+{pyproject-nix, pyproject-build-systems, pyproject-overrides, lib, workspace, python3, callPackage}:
 let overlay = workspace.mkPyprojectOverlay {
       # Prefer prebuilt binary wheels as a package source.
       # Sdists are less likely to "just work" because of the metadata missing from uv.lock.
@@ -9,39 +9,12 @@ let overlay = workspace.mkPyprojectOverlay {
       #   platform_release = "5.10.65";
       # };
     };
-
-    addCuda = package: package.overrideAttrs (p: {
-      buildInputs = p.buildInputs ++ (with cudaPackages; [
-        cudatoolkit
-        cudnn
-        cuda_cudart
-        nccl
-      ]);
-      postInstall = ''
-rm -f $out/lib/python3.12/site-packages/nvidia/__pycache__/__init__.cpython-312.pyc
-'';
-    });
-
-    addCudaTo = packageSet: names: builtins.listToAttrs (map (name: { inherit name; value = addCuda(packageSet.${name}); }) names);
-
-    cudaOverrides = final: prev: addCudaTo prev [
-      "nvidia-cusolver-cu12"
-      "nvidia-cusparse-cu12"
-      "nvidia-cublas-cu12"
-      "nvidia-cuda-cupti-cu12"
-      "nvidia-cuda-nvrtc-cu12"
-      "nvidia-cudnn-cu12"
-      "nvidia-cufft-cu12"
-      "nvidia-curand-cu12"
-      "nvidia-nccl-cu12"
-      "nvidia-nvjitlink-cu12"
-      "nvidia-nvtx-cu12"
-      "torch"
-      "numba"
-    ];
-    pyprojectOverrides = final: prev: {
-      numba = prev.numba.overrideAttrs (p: {
-        buildInputs = p.buildInputs ++ [tbb_2021_11];
+    fix-vectorlink-gpu-build = final: prev: {
+      vectorlink-gpu = prev.vectorlink-gpu.overrideAttrs (old: {
+        buildInputs = old.buildInputs or [] ++ [final.hatchling final.pathspec final.pluggy final.packaging final.trove-classifiers];
+      });
+      vectorlink-py = prev.vectorlink-py.overrideAttrs (old: {
+        buildInputs = old.buildInputs or [] ++ [final.hatchling final.pathspec final.pluggy final.packaging final.trove-classifiers];
       });
     };
 in
@@ -51,7 +24,8 @@ in
   lib.composeManyExtensions [
     pyproject-build-systems.overlays.default
     overlay
-    cudaOverrides
-    pyprojectOverrides
+    pyproject-overrides.cuda
+    pyproject-overrides.default
+    fix-vectorlink-gpu-build
   ]
 )

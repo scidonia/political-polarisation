@@ -47,7 +47,7 @@
         };
         pythonSet = pkgs.callPackage ./nix/uv-python.nix {
           inherit pyproject-nix pyproject-build-systems workspace;
-          # pyproject-overrides = pyproject-nix-overrides.overrides pkgs;
+          pyproject-overrides = pyproject-nix-overrides.overrides pkgs;
         };
       in
       {
