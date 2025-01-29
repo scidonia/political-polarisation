@@ -1,4 +1,5 @@
 import pyarrow as pa
+import datafusion as df
 
 MANIFESTO_SCHEMA = pa.schema(
     [
@@ -7,6 +8,14 @@ MANIFESTO_SCHEMA = pa.schema(
         pa.field("themedetail", pa.string(), nullable=False),
         pa.field("wordcount", pa.int64(), nullable=False),
         pa.field("text", pa.string(), nullable=True),
+    ]
+)
+
+TEXT_SCHEMA = pa.schema(
+    [
+        pa.field("hash", pa.string_view(), nullable=False),
+        pa.field("id", pa.int64(), nullable=False),
+        pa.field("templated", pa.string(), nullable=False),
     ]
 )
 
@@ -20,6 +29,10 @@ VECTORS_SCHEMA = pa.schema(
     ]
 )
 
+
 def build_session_context(location="output/") -> df.SessionContext:
     ctx = df.SessionContext()
-    ctx.register_parquet("manifestos", f"{location}manifestos/", schema=MANIFESTO_SCHEMA)
+    ctx.register_parquet("records", f"{location}records/", schema=MANIFESTO_SCHEMA)
+
+    ctx.register_parquet("text", f"{location}text/", schema=TEXT_SCHEMA)
+    return ctx
