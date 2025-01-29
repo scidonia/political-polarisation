@@ -15,3 +15,6 @@ build-backend = "hatchling.build"
 [tool.uv.sources]
 vectorlink-gpu = { git = "ssh://git@github.com/vectorlink-ai/vectorlink-gpu" }
 vectorlink-py = { git = "ssh://git@github.com/vectorlink-ai/vectorlink.py" }
+
+[project.scripts]
+ingest-csv = 'political_polarisation.main:ingest_csv'
