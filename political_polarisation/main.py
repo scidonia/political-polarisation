@@ -37,13 +37,14 @@ def vectorize_records():
     ctx = build_session_context()
 
     print("vectorizing...")
-    configuration = {
-        "provider": "OpenAI",
-        "max_batch_size": 200 * 2**20,
-        "dimension": EMBEDDING_SIZE,
-        "model": MODEL,
-    }
-    embed.vectorize(ctx, "output/text/", "output/vectors/", configuration=configuration)
+    embed.vectorize(
+        ctx,
+        "output/text/",
+        "output/vectors/",
+        dimension=EMBEDDING_SIZE,
+        model=model,
+        batch_size=1,
+    )
 
 
 def load_vectors(ctx: df.SessionContext) -> torch.Tensor:
