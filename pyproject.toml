@@ -19,3 +19,4 @@ vectorlink-py = { git = "ssh://git@github.com/vectorlink-ai/vectorlink.py" }
 
 [project.scripts]
 ingest-csv = 'political_polarisation.main:ingest_csv'
+build-texts = 'political_polarisation.main:build_text_records'
