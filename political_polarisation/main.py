@@ -33,7 +33,11 @@ def is_sublist(sublist, mainlist):
     return False
 
 
-def ask_oracle_for_chunk(enc, tokens):
+def ask_oracle_for_chunk(enc: Encoding, tokens: List[int]) -> List[int]:
+    """Asks an oracle (ChatGpt etc.) to assist in chunking a text by
+    removing broken sentences, phrases, titles, quotes or other semantic
+    blocks from the beginning or end of the chunk.
+    """
     text = enc.decode(tokens)
     subject = "Historic People who are creators of works"
     # api_key = os.environ["DEEPSEEK_API_KEY"]
@@ -72,10 +76,13 @@ BEGINS
 
 
 # Step 1: Define Tokenizer and Token Window Parameters
-def chunk_tokens(tokens, window_size, overlap):
+def chunk_tokens(tokens: List[int], window_size: int, overlap: int) -> List[List[int]]:
     """
     Creates overlapping chunks of tokens with a fixed size.
     """
+    assert overlap < window_size
+    if len(tokens) < window_size:
+        return [tokens]
     chunks = []
     for i in range(0, len(tokens), window_size - overlap):
         chunk = tokens[i : i + window_size]  # Slide the window
@@ -91,7 +98,7 @@ def mechanical_clean_chunk(enc: Encoding, chunk: List[int]) -> List[int]:
     text = enc.decode(chunk)
     # Define regex patterns
     start_pattern = (
-        r"^[^A-Z\"']*[A-Z\"']"  # Match non-sentence-starting junk at the beginning
+        r"^[^\"'.!?]*[^\"'.!?]"  # Match non-sentence-starting junk at the beginning
     )
     end_pattern = r"[.!?\"']\s*[^.!?\"']*$"  # Match non-sentence-ending junk at the end
 
@@ -99,7 +106,7 @@ def mechanical_clean_chunk(enc: Encoding, chunk: List[int]) -> List[int]:
     start_match = re.search(start_pattern, text)
     if start_match:
         start_index = (
-            start_match.end() - 1
+            start_match.end() + 1
         )  # `end()` gives the index just after the match
     else:
         start_index = 0  # Start at the very beginning if no match
@@ -125,24 +132,26 @@ def oracular_text_chunking(
     window_size: int = 5000,
     overlap: int = 500,
 ) -> pa.Array:
+    """Takes an array of strings and produces an array of arrays of strings chunked into
+    bounded token window sizes, providing some overlap and trimming semantically broken
+    content from the beginning and end.
+    """
     records_with_chunks = []
     for record_text in records:
         tokenized = enc.encode(str(record_text))
         chunks = chunk_tokens(tokenized, window_size, overlap)
         chunk_array_list = []
         # Add each chunk with its record id
-        for chunk_id, chunk in enumerate(chunks):
+        for chunk in chunks:
             try:
                 chunk = ask_oracle_for_chunk(enc, chunk)
             except Exception as e:
                 chunk = mechanical_clean_chunk(enc, chunk)
-            print("After the oracle")
-            print(f"with chunk:\n\n\n {chunk}")
+            # print(f"chunks: {chunk}")
             text = enc.decode(chunk)
-            print(text)
             chunk_array_list.append(text)
-        records_with_chunks.append(pa.array(chunk_array_list))
-    return pa.array(records_with_chunks)
+        records_with_chunks.append(chunk_array_list)
+    return pa.array(records_with_chunks, pa.list_(pa.string()))
 
 
 def record_chunker_fn(records: pa.Array) -> pa.Array:
