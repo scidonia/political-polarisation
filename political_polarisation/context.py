@@ -19,8 +19,8 @@ TEXT_SCHEMA = pa.schema(
     ]
 )
 
-MODEL = "text-embedding-3-large"
-EMBEDDING_SIZE = 3072  # 1536
+MODEL = "Alibaba-NLP/gte-Qwen2-7B-instruct"
+EMBEDDING_SIZE = 4096
 
 VECTORS_SCHEMA = pa.schema(
     [
@@ -32,7 +32,10 @@ VECTORS_SCHEMA = pa.schema(
 
 def build_session_context(location="output/") -> df.SessionContext:
     ctx = df.SessionContext()
-    ctx.register_parquet("records", f"{location}records/", schema=MANIFESTO_SCHEMA)
-
-    ctx.register_parquet("text", f"{location}text/", schema=TEXT_SCHEMA)
+    ctx.register_parquet(
+        "manifestos", f"{location}manifestos/", schema=MANIFESTO_SCHEMA
+    )
+    ctx.register_parquet(
+        "vectors", f"{location}vectors/", schema=VECTORS_SCHEMA
+    )
     return ctx
