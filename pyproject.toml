@@ -23,6 +23,7 @@ dependencies = [
     "backoff>=2.2.1",
     "langchain-aws>=0.2.22",
     "sentence-transformers>=4.1.0",
+    "datafusion>=46.0.0",
 ]
 
 [build-system]

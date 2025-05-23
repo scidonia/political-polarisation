@@ -5,7 +5,8 @@ import os
 import ctypes
 from political_polarisation.phrasal import get_phrases, chunk_phrases, PhrasalChunk
 from political_polarisation.context import *
-import dataframe as df
+from political_polarisation.utils import eprintln
+import datafusion as df
 
 
 def torch_type_to_ctype(torch_type):
@@ -107,9 +108,12 @@ def create_phrasal_chunks(chunk_size=1000):
         }
     )
 
+    # Convert pandas DataFrame to PyArrow Table
+    chunks_arrow = pa.Table.from_pandas(chunks_df)
+
     # Save to parquet
     os.makedirs("output/chunks/", exist_ok=True)
-    chunks_table = ctx.create_dataframe(chunks_df)
+    chunks_table = ctx.create_dataframe([chunks_arrow.to_batches()])
     chunks_table.write_parquet("output/chunks/")
 
     eprintln(f"Created {len(chunks_df)} phrasal chunks and saved to output/chunks/")
@@ -162,7 +166,8 @@ def vectorize_records(input_dir="output/chunks/"):
     embeddings_df = pd.DataFrame({"hash": all_hashes, "embedding": all_embeddings})
 
     # Convert to DataFusion table and write to parquet
-    embeddings_table = ctx.create_dataframe(embeddings_df)
+    embeddings_arrow = pa.Table.from_pandas(embeddings_df)
+    embeddings_table = ctx.create_dataframe([embeddings_arrow.to_batches()])
     embeddings_table.write_parquet("output/vectors/")
 
     eprintln("Vectorization complete!")

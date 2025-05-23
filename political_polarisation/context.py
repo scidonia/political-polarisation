@@ -25,7 +25,11 @@ EMBEDDING_SIZE = 4096
 VECTORS_SCHEMA = pa.schema(
     [
         pa.field("hash", pa.string_view(), nullable=False),
-        pa.field("embedding", pa.list_(pa.float32(), EMBEDDING_SIZE), nullable=False),
+        pa.field(
+            "embedding",
+            pa.list_(pa.float32(), EMBEDDING_SIZE),
+            nullable=False,
+        ),
     ]
 )
 
@@ -36,6 +40,8 @@ def build_session_context(location="output/") -> df.SessionContext:
         "manifestos", f"{location}manifestos/", schema=MANIFESTO_SCHEMA
     )
     ctx.register_parquet(
-        "vectors", f"{location}vectors/", schema=VECTORS_SCHEMA
+        "vectors",
+        f"{location}vectors/",
+        schema=VECTORS_SCHEMA,
     )
     return ctx
