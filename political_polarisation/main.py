@@ -134,10 +134,10 @@ def vectorize_records(input_dir="output/chunks/"):
 
     eprintln("Processing records and generating embeddings...")
     # Create a unique hash for each record
-    records = records.with_column("hash", df.md5(df.col("text")))
+    records = records.with_column("hash", df.functions.md5(df.col("text")))
 
     # Get unique texts to avoid duplicate embeddings
-    unique_texts = records.select(["hash", "text"]).distinct()
+    unique_texts = records.select(df.col("hash"), df.col("text")).distinct()
 
     # Convert to pandas for easier processing
     texts_pd = unique_texts.to_pandas()
