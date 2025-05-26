@@ -298,12 +298,12 @@ def compare_manifesto_categories():
     chunk_distances_path = "output/comparisons/manifesto_chunk_distances.csv"
     chunk_distances_df.to_csv(chunk_distances_path, index=False)
     eprintln(f"Chunk distances saved to {chunk_distances_path}")
-    
+
     # 2.a: Create a heat map using seaborn and save it to a png
     try:
         import seaborn as sns
         import matplotlib.pyplot as plt
-        
+
         # Create a pivot table for the heatmap
         heatmap_data = pd.pivot_table(
             chunk_distances_df, 
@@ -311,7 +311,7 @@ def compare_manifesto_categories():
             index='manifesto1',
             columns='manifesto2'
         )
-        
+
         # Create the heatmap
         plt.figure(figsize=(12, 10))
         sns.heatmap(
@@ -322,7 +322,7 @@ def compare_manifesto_categories():
             fmt=".3f"
         )
         plt.title('Average Cosine Distance Between Manifesto Chunks')
-        
+
         # Save the heatmap
         os.makedirs("output/visualizations/", exist_ok=True)
         heatmap_path = "output/visualizations/manifesto_distance_heatmap.png"
@@ -331,28 +331,28 @@ def compare_manifesto_categories():
         eprintln(f"Heatmap saved to {heatmap_path}")
     except ImportError:
         eprintln("Warning: seaborn or matplotlib not installed. Skipping heatmap generation.")
-    
+
     # Create DataFrame with results from theme comparisons
     results_df = pd.DataFrame(results)
-    
+
     # Save results to CSV
     os.makedirs("output/comparisons/", exist_ok=True)
     results_path = "output/comparisons/manifesto_theme_distances.csv"
     results_df.to_csv(results_path, index=False)
-    
+
     # Create a heatmap for theme distances
     try:
         import seaborn as sns
         import matplotlib.pyplot as plt
-        
+
         # Create a multi-index for the heatmap
         # This will create a single heatmap with manifesto pairs on one axis and themes on the other
-        
+
         # Create a new column with manifesto pair names for better readability
         results_df['manifesto_pair'] = results_df.apply(
             lambda row: f"{row['manifesto1']} vs {row['manifesto2']}", axis=1
         )
-        
+
         # Add the reverse pairs to make the heatmap complete
         # This is just for visualization - we only computed half the pairs to avoid redundancy
         reverse_results = []
