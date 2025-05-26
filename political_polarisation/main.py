@@ -345,73 +345,44 @@ def compare_manifesto_categories():
         import seaborn as sns
         import matplotlib.pyplot as plt
         
-        # Get unique themes
-        unique_themes = sorted(set(row["theme1"] for row in results))
+        # Create a multi-index for the heatmap
+        # This will create a single heatmap with manifesto pairs on one axis and themes on the other
         
-        # For each theme, create a separate heatmap
-        for theme in unique_themes:
-            # Filter data for this theme
-            theme_data = results_df[results_df["theme1"] == theme]
-            
-            # Skip if not enough data
-            if len(theme_data) < 2:
-                eprintln(f"Skipping heatmap for theme '{theme}': not enough data")
-                continue
-                
-            # Create a pivot table for the heatmap
-            theme_heatmap_data = pd.pivot_table(
-                theme_data, 
-                values='cosine_distance',
-                index='manifesto1',
-                columns='manifesto2'
-            )
-            
-            # Create the heatmap
-            plt.figure(figsize=(12, 10))
-            sns.heatmap(
-                theme_heatmap_data, 
-                annot=True, 
-                cmap="YlGnBu", 
-                linewidths=.5, 
-                fmt=".3f"
-            )
-            plt.title(f'Cosine Distance Between Manifestos for Theme: {theme}')
-            
-            # Save the heatmap
-            os.makedirs("output/visualizations/themes/", exist_ok=True)
-            theme_heatmap_path = f"output/visualizations/themes/theme_{theme.replace(' ', '_').lower()}_heatmap.png"
-            plt.savefig(theme_heatmap_path, bbox_inches='tight', dpi=300)
-            plt.close()
-            eprintln(f"Theme heatmap saved to {theme_heatmap_path}")
-            
-        # Create a combined heatmap showing average distance by theme
-        # Pivot the data to get themes as rows and manifesto pairs as columns
-        theme_summary = results_df.groupby(['theme1', 'manifesto1', 'manifesto2'])['cosine_distance'].mean().reset_index()
-        
-        # Create a multi-index pivot table
-        theme_summary_pivot = pd.pivot_table(
-            theme_summary,
-            values='cosine_distance',
-            index=['theme1'],
-            columns=['manifesto1', 'manifesto2']
+        # Create a new column with manifesto pair names for better readability
+        results_df['manifesto_pair'] = results_df.apply(
+            lambda row: f"{row['manifesto1']} vs {row['manifesto2']}", axis=1
         )
         
-        # Create the summary heatmap
-        plt.figure(figsize=(16, 12))
+        # Create a pivot table with themes as columns and manifesto pairs as rows
+        theme_heatmap_data = pd.pivot_table(
+            results_df,
+            values='cosine_distance',
+            index='manifesto_pair',
+            columns='theme1'
+        )
+        
+        # Create the heatmap
+        plt.figure(figsize=(20, 16))
         sns.heatmap(
-            theme_summary_pivot,
+            theme_heatmap_data,
             annot=True,
             cmap="YlGnBu",
             linewidths=.5,
             fmt=".3f"
         )
         plt.title('Cosine Distance Between Manifestos by Theme')
+        plt.xlabel('Theme')
+        plt.ylabel('Manifesto Pair')
         
-        # Save the summary heatmap
-        summary_heatmap_path = "output/visualizations/theme_summary_heatmap.png"
-        plt.savefig(summary_heatmap_path, bbox_inches='tight', dpi=300)
+        # Adjust layout to make room for labels
+        plt.tight_layout()
+        
+        # Save the heatmap
+        os.makedirs("output/visualizations/", exist_ok=True)
+        theme_heatmap_path = "output/visualizations/manifesto_theme_heatmap.png"
+        plt.savefig(theme_heatmap_path, bbox_inches='tight', dpi=300)
         plt.close()
-        eprintln(f"Theme summary heatmap saved to {summary_heatmap_path}")
+        eprintln(f"Theme heatmap saved to {theme_heatmap_path}")
     except Exception as e:
         eprintln(f"Warning: Error creating theme heatmaps: {e}")
     
