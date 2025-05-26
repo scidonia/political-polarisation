@@ -38,6 +38,7 @@ ingest-csv = 'political_polarisation.cli:cli_ingest_csv'
 create-chunks = 'political_polarisation.cli:cli_create_chunks'
 vectorize = 'political_polarisation.cli:cli_vectorize'
 process-csv = 'political_polarisation.cli:cli_process_csv'
+compare-categories = 'political_polarisation.cli:cli_compare_categories'
 
 [tool.hatch.build.targets.wheel]
 packages = ["political_polarisation"]
