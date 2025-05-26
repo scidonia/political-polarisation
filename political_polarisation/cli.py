@@ -5,6 +5,7 @@ from political_polarisation.main import (
     create_phrasal_chunks,
     vectorize_records,
     process_csv_pipeline,
+    compare_manifesto_categories,
 )
 
 
@@ -45,3 +46,11 @@ def cli_process_csv():
     )
     args = parser.parse_args()
     process_csv_pipeline(args.csv_path, args.chunk_size)
+
+
+def cli_compare_categories():
+    parser = argparse.ArgumentParser(
+        description="Compare manifesto categories using cosine distance"
+    )
+    args = parser.parse_args()
+    compare_manifesto_categories()

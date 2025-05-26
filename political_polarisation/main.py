@@ -173,6 +173,88 @@ def vectorize_records(input_dir="output/chunks/"):
     eprintln("Vectorization complete!")
 
 
+def compare_manifesto_categories():
+    """
+    Compare each manifesto's category with categories in every other manifesto
+    using cosine distance implemented with torch.
+    
+    Returns a DataFrame with pairwise distances between manifesto categories.
+    """
+    import torch.nn.functional as F
+    import pandas as pd
+    import numpy as np
+    
+    ctx = build_session_context()
+    eprintln("Loading vectors and chunks...")
+    
+    # Load vectors
+    vectors = ctx.read_parquet("output/vectors/")
+    
+    # Load chunks with manifesto and theme information
+    chunks = ctx.read_parquet("output/chunks/")
+    
+    # Join vectors with chunks to get manifesto and theme for each vector
+    chunks = chunks.with_column("hash", df.functions.md5(df.col("text")))
+    joined = chunks.join(vectors, left_on=["hash"], right_on=["hash"])
+    
+    # Convert to pandas for easier processing
+    joined_pd = joined.select(
+        df.col("manifesto"), 
+        df.col("theme"), 
+        df.col("themedetail"),
+        df.col("embedding")
+    ).to_pandas()
+    
+    # Group by manifesto and theme to get average embeddings
+    eprintln("Computing average embeddings for each manifesto-theme combination...")
+    grouped = joined_pd.groupby(["manifesto", "theme"])
+    
+    # Calculate average embeddings for each manifesto-theme combination
+    avg_embeddings = {}
+    for (manifesto, theme), group in grouped:
+        embeddings = np.stack(group["embedding"].values)
+        avg_embedding = torch.tensor(embeddings.mean(axis=0), dtype=torch.float32)
+        # Normalize the embedding
+        avg_embedding = F.normalize(avg_embedding, p=2, dim=0)
+        avg_embeddings[(manifesto, theme)] = avg_embedding
+    
+    # Calculate pairwise cosine distances
+    eprintln("Calculating pairwise cosine distances...")
+    results = []
+    keys = list(avg_embeddings.keys())
+    
+    for i, (manifesto1, theme1) in enumerate(keys):
+        for j, (manifesto2, theme2) in enumerate(keys):
+            if i >= j:  # Only compute upper triangle (and diagonal)
+                continue
+                
+            emb1 = avg_embeddings[(manifesto1, theme1)]
+            emb2 = avg_embeddings[(manifesto2, theme2)]
+            
+            # Calculate cosine distance (1 - cosine similarity)
+            # Since embeddings are normalized, we can use dot product for cosine similarity
+            cosine_sim = torch.dot(emb1, emb2).item()
+            cosine_dist = 1.0 - cosine_sim
+            
+            results.append({
+                "manifesto1": manifesto1,
+                "theme1": theme1,
+                "manifesto2": manifesto2,
+                "theme2": theme2,
+                "cosine_distance": cosine_dist
+            })
+    
+    # Create DataFrame with results
+    results_df = pd.DataFrame(results)
+    
+    # Save results to CSV
+    os.makedirs("output/comparisons/", exist_ok=True)
+    results_path = "output/comparisons/manifesto_theme_distances.csv"
+    results_df.to_csv(results_path, index=False)
+    
+    eprintln(f"Comparison complete! Results saved to {results_path}")
+    return results_df
+
 def process_csv_pipeline(csv_path="uk_manifesto_truncated.csv", chunk_size=1000):
     """
     Process a CSV file through the entire pipeline:
