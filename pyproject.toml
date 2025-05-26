@@ -24,6 +24,8 @@ dependencies = [
     "langchain-aws>=0.2.22",
     "sentence-transformers>=4.1.0",
     "datafusion>=46.0.0",
+    "seaborn>=0.13.2",
+    "matplotlib>=3.10.3",
 ]
 
 [build-system]
