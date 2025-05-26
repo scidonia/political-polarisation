@@ -332,6 +332,14 @@ def compare_manifesto_categories():
     except ImportError:
         eprintln("Warning: seaborn or matplotlib not installed. Skipping heatmap generation.")
     
+    # Create DataFrame with results from theme comparisons
+    results_df = pd.DataFrame(results)
+    
+    # Save results to CSV
+    os.makedirs("output/comparisons/", exist_ok=True)
+    results_path = "output/comparisons/manifesto_theme_distances.csv"
+    results_df.to_csv(results_path, index=False)
+    
     # 3: Calculate overall average distances between one manifesto and another
     eprintln("Calculating overall average distances between manifestos...")
     
@@ -403,14 +411,6 @@ def compare_manifesto_categories():
         eprintln(f"Overall heatmap saved to {overall_heatmap_path}")
     except ImportError:
         eprintln("Warning: seaborn or matplotlib not installed. Skipping overall heatmap generation.")
-
-    # Create DataFrame with results
-    results_df = pd.DataFrame(results)
-
-    # Save results to CSV
-    os.makedirs("output/comparisons/", exist_ok=True)
-    results_path = "output/comparisons/manifesto_theme_distances.csv"
-    results_df.to_csv(results_path, index=False)
 
     eprintln(f"Comparison complete! Results saved to {results_path}")
     return results_df
