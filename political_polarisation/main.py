@@ -220,6 +220,7 @@ def compare_manifesto_categories():
         avg_embeddings[(manifesto, theme)] = avg_embedding
 
     # 1: calculate distance between manifestos by theme
+    # TODO: Create a theme heat map
     # Calculate pairwise cosine distances
     eprintln("Calculating pairwise cosine distances by theme...")
     results = []
@@ -248,41 +249,41 @@ def compare_manifesto_categories():
 
     # 2: Calculate distance of every manifesto chunk to every other
     eprintln("Calculating pairwise distances between all manifesto chunks...")
-    
+
     # Get unique manifestos
     unique_manifestos = joined_pd["manifesto"].unique()
-    
+
     # Create a dictionary to store all embeddings by manifesto
     manifesto_embeddings = {}
     for manifesto in unique_manifestos:
         manifesto_data = joined_pd[joined_pd["manifesto"] == manifesto]
         embeddings = np.stack(manifesto_data["embedding"].values)
         manifesto_embeddings[manifesto] = torch.tensor(embeddings, dtype=torch.float32)
-    
+
     # Calculate average distance between all chunks of each manifesto pair
     chunk_distances = []
     for i, manifesto1 in enumerate(unique_manifestos):
         for j, manifesto2 in enumerate(unique_manifestos):
             if i >= j:  # Only compute upper triangle
                 continue
-                
+
             embs1 = manifesto_embeddings[manifesto1]
             embs2 = manifesto_embeddings[manifesto2]
-            
+
             # Normalize all embeddings
             embs1 = F.normalize(embs1, p=2, dim=1)
             embs2 = F.normalize(embs2, p=2, dim=1)
-            
+
             # Calculate cosine similarity matrix between all chunks
             # (n_chunks1, embedding_dim) @ (embedding_dim, n_chunks2) -> (n_chunks1, n_chunks2)
             similarity_matrix = torch.mm(embs1, embs2.t())
-            
+
             # Convert to distances
             distance_matrix = 1.0 - similarity_matrix
-            
+
             # Calculate average distance
             avg_distance = distance_matrix.mean().item()
-            
+
             chunk_distances.append({
                 "manifesto1": manifesto1,
                 "manifesto2": manifesto2,
@@ -290,10 +291,10 @@ def compare_manifesto_categories():
                 "min_chunk_distance": distance_matrix.min().item(),
                 "max_chunk_distance": distance_matrix.max().item()
             })
-    
+
     # Create DataFrame with chunk distance results
     chunk_distances_df = pd.DataFrame(chunk_distances)
-    
+
     # Save results to CSV
     chunk_distances_path = "output/comparisons/manifesto_chunk_distances.csv"
     chunk_distances_df.to_csv(chunk_distances_path, index=False)
