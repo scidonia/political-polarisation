@@ -192,7 +192,7 @@ def compare_manifesto_categories():
     
     # Load chunks with manifesto and theme information
     chunks = ctx.read_parquet("output/chunks/")
-    
+
     # Join vectors with chunks to get manifesto and theme for each vector
     chunks = chunks.with_column("hash", df.functions.md5(df.col("text")))
     vectors = vectors.with_column_renamed("hash", "vector_hash")
@@ -218,25 +218,26 @@ def compare_manifesto_categories():
         # Normalize the embedding
         avg_embedding = F.normalize(avg_embedding, p=2, dim=0)
         avg_embeddings[(manifesto, theme)] = avg_embedding
-    
+
+    # 1: calculate distance between manifestos by theme
     # Calculate pairwise cosine distances
-    eprintln("Calculating pairwise cosine distances...")
+    eprintln("Calculating pairwise cosine distances by theme...")
     results = []
     keys = list(avg_embeddings.keys())
-    
+
     for i, (manifesto1, theme1) in enumerate(keys):
         for j, (manifesto2, theme2) in enumerate(keys):
-            if i >= j:  # Only compute upper triangle (and diagonal)
+            if theme1 != theme2:
                 continue
-                
+
             emb1 = avg_embeddings[(manifesto1, theme1)]
             emb2 = avg_embeddings[(manifesto2, theme2)]
-            
+
             # Calculate cosine distance (1 - cosine similarity)
             # Since embeddings are normalized, we can use dot product for cosine similarity
             cosine_sim = torch.dot(emb1, emb2).item()
             cosine_dist = 1.0 - cosine_sim
-            
+
             results.append({
                 "manifesto1": manifesto1,
                 "theme1": theme1,
@@ -244,15 +245,21 @@ def compare_manifesto_categories():
                 "theme2": theme2,
                 "cosine_distance": cosine_dist
             })
-    
+
+    # TODO
+    # 2: Calculate distance of every manifesto chunk to every other
+    # 2.a: Create a heat map (using seaborn) and save it to a png
+    # TODO
+    # 3: Calculate overall average distances between one manifsto and another
+
     # Create DataFrame with results
     results_df = pd.DataFrame(results)
-    
+
     # Save results to CSV
     os.makedirs("output/comparisons/", exist_ok=True)
     results_path = "output/comparisons/manifesto_theme_distances.csv"
     results_df.to_csv(results_path, index=False)
-    
+
     eprintln(f"Comparison complete! Results saved to {results_path}")
     return results_df
 
