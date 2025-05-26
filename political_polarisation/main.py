@@ -246,11 +246,163 @@ def compare_manifesto_categories():
                 "cosine_distance": cosine_dist
             })
 
-    # TODO
     # 2: Calculate distance of every manifesto chunk to every other
-    # 2.a: Create a heat map (using seaborn) and save it to a png
-    # TODO
-    # 3: Calculate overall average distances between one manifsto and another
+    eprintln("Calculating pairwise distances between all manifesto chunks...")
+    
+    # Get unique manifestos
+    unique_manifestos = joined_pd["manifesto"].unique()
+    
+    # Create a dictionary to store all embeddings by manifesto
+    manifesto_embeddings = {}
+    for manifesto in unique_manifestos:
+        manifesto_data = joined_pd[joined_pd["manifesto"] == manifesto]
+        embeddings = np.stack(manifesto_data["embedding"].values)
+        manifesto_embeddings[manifesto] = torch.tensor(embeddings, dtype=torch.float32)
+    
+    # Calculate average distance between all chunks of each manifesto pair
+    chunk_distances = []
+    for i, manifesto1 in enumerate(unique_manifestos):
+        for j, manifesto2 in enumerate(unique_manifestos):
+            if i >= j:  # Only compute upper triangle
+                continue
+                
+            embs1 = manifesto_embeddings[manifesto1]
+            embs2 = manifesto_embeddings[manifesto2]
+            
+            # Normalize all embeddings
+            embs1 = F.normalize(embs1, p=2, dim=1)
+            embs2 = F.normalize(embs2, p=2, dim=1)
+            
+            # Calculate cosine similarity matrix between all chunks
+            # (n_chunks1, embedding_dim) @ (embedding_dim, n_chunks2) -> (n_chunks1, n_chunks2)
+            similarity_matrix = torch.mm(embs1, embs2.t())
+            
+            # Convert to distances
+            distance_matrix = 1.0 - similarity_matrix
+            
+            # Calculate average distance
+            avg_distance = distance_matrix.mean().item()
+            
+            chunk_distances.append({
+                "manifesto1": manifesto1,
+                "manifesto2": manifesto2,
+                "avg_chunk_distance": avg_distance,
+                "min_chunk_distance": distance_matrix.min().item(),
+                "max_chunk_distance": distance_matrix.max().item()
+            })
+    
+    # Create DataFrame with chunk distance results
+    chunk_distances_df = pd.DataFrame(chunk_distances)
+    
+    # Save results to CSV
+    chunk_distances_path = "output/comparisons/manifesto_chunk_distances.csv"
+    chunk_distances_df.to_csv(chunk_distances_path, index=False)
+    eprintln(f"Chunk distances saved to {chunk_distances_path}")
+    
+    # 2.a: Create a heat map using seaborn and save it to a png
+    try:
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+        
+        # Create a pivot table for the heatmap
+        heatmap_data = pd.pivot_table(
+            chunk_distances_df, 
+            values='avg_chunk_distance',
+            index='manifesto1',
+            columns='manifesto2'
+        )
+        
+        # Create the heatmap
+        plt.figure(figsize=(12, 10))
+        sns.heatmap(
+            heatmap_data, 
+            annot=True, 
+            cmap="YlGnBu", 
+            linewidths=.5, 
+            fmt=".3f"
+        )
+        plt.title('Average Cosine Distance Between Manifesto Chunks')
+        
+        # Save the heatmap
+        os.makedirs("output/visualizations/", exist_ok=True)
+        heatmap_path = "output/visualizations/manifesto_distance_heatmap.png"
+        plt.savefig(heatmap_path, bbox_inches='tight', dpi=300)
+        plt.close()
+        eprintln(f"Heatmap saved to {heatmap_path}")
+    except ImportError:
+        eprintln("Warning: seaborn or matplotlib not installed. Skipping heatmap generation.")
+    
+    # 3: Calculate overall average distances between one manifesto and another
+    eprintln("Calculating overall average distances between manifestos...")
+    
+    # Group by manifesto pair to get average distance across all themes
+    manifesto_distances = []
+    
+    # Get unique manifesto pairs from the theme distances
+    manifesto_pairs = set()
+    for _, row in results_df.iterrows():
+        pair = (row["manifesto1"], row["manifesto2"])
+        manifesto_pairs.add(pair)
+    
+    # Calculate average distance for each manifesto pair
+    for manifesto1, manifesto2 in manifesto_pairs:
+        # Get all theme distances for this manifesto pair
+        pair_data = results_df[
+            (results_df["manifesto1"] == manifesto1) & 
+            (results_df["manifesto2"] == manifesto2)
+        ]
+        
+        # Calculate average distance across all themes
+        avg_distance = pair_data["cosine_distance"].mean()
+        
+        manifesto_distances.append({
+            "manifesto1": manifesto1,
+            "manifesto2": manifesto2,
+            "avg_theme_distance": avg_distance,
+            "min_theme_distance": pair_data["cosine_distance"].min(),
+            "max_theme_distance": pair_data["cosine_distance"].max(),
+            "theme_count": len(pair_data)
+        })
+    
+    # Create DataFrame with overall manifesto distance results
+    manifesto_distances_df = pd.DataFrame(manifesto_distances)
+    
+    # Save results to CSV
+    manifesto_distances_path = "output/comparisons/overall_manifesto_distances.csv"
+    manifesto_distances_df.to_csv(manifesto_distances_path, index=False)
+    eprintln(f"Overall manifesto distances saved to {manifesto_distances_path}")
+    
+    # Create a heatmap for overall manifesto distances
+    try:
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+        
+        # Create a pivot table for the heatmap
+        overall_heatmap_data = pd.pivot_table(
+            manifesto_distances_df, 
+            values='avg_theme_distance',
+            index='manifesto1',
+            columns='manifesto2'
+        )
+        
+        # Create the heatmap
+        plt.figure(figsize=(12, 10))
+        sns.heatmap(
+            overall_heatmap_data, 
+            annot=True, 
+            cmap="YlGnBu", 
+            linewidths=.5, 
+            fmt=".3f"
+        )
+        plt.title('Average Cosine Distance Between Manifestos (Across All Themes)')
+        
+        # Save the heatmap
+        overall_heatmap_path = "output/visualizations/overall_manifesto_distance_heatmap.png"
+        plt.savefig(overall_heatmap_path, bbox_inches='tight', dpi=300)
+        plt.close()
+        eprintln(f"Overall heatmap saved to {overall_heatmap_path}")
+    except ImportError:
+        eprintln("Warning: seaborn or matplotlib not installed. Skipping overall heatmap generation.")
 
     # Create DataFrame with results
     results_df = pd.DataFrame(results)
