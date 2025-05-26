@@ -227,7 +227,7 @@ def compare_manifesto_categories():
 
     for i, (manifesto1, theme1) in enumerate(keys):
         for j, (manifesto2, theme2) in enumerate(keys):
-            if theme1 != theme2:
+            if theme1 != theme2 or i >= j:  # Skip different themes and only compute upper triangle
                 continue
 
             emb1 = avg_embeddings[(manifesto1, theme1)]
@@ -353,9 +353,26 @@ def compare_manifesto_categories():
             lambda row: f"{row['manifesto1']} vs {row['manifesto2']}", axis=1
         )
         
+        # Add the reverse pairs to make the heatmap complete
+        # This is just for visualization - we only computed half the pairs to avoid redundancy
+        reverse_results = []
+        for _, row in results_df.iterrows():
+            if row['manifesto1'] != row['manifesto2']:  # Skip self-comparisons
+                reverse_results.append({
+                    "manifesto1": row['manifesto2'],
+                    "theme1": row['theme2'],
+                    "manifesto2": row['manifesto1'],
+                    "theme2": row['theme1'],
+                    "cosine_distance": row['cosine_distance'],
+                    "manifesto_pair": f"{row['manifesto2']} vs {row['manifesto1']}"
+                })
+        
+        # Add reverse pairs to the dataframe for complete visualization
+        vis_df = pd.concat([results_df, pd.DataFrame(reverse_results)], ignore_index=True)
+        
         # Create a pivot table with themes as columns and manifesto pairs as rows
         theme_heatmap_data = pd.pivot_table(
-            results_df,
+            vis_df,
             values='cosine_distance',
             index='manifesto_pair',
             columns='theme1'
@@ -432,8 +449,27 @@ def compare_manifesto_categories():
         import matplotlib.pyplot as plt
         
         # Create a pivot table for the heatmap
-        overall_heatmap_data = pd.pivot_table(
+        # Add the reverse pairs for visualization
+        reverse_manifesto_distances = []
+        for _, row in manifesto_distances_df.iterrows():
+            reverse_manifesto_distances.append({
+                "manifesto1": row['manifesto2'],
+                "manifesto2": row['manifesto1'],
+                "avg_theme_distance": row['avg_theme_distance'],
+                "min_theme_distance": row['min_theme_distance'],
+                "max_theme_distance": row['max_theme_distance'],
+                "theme_count": row['theme_count']
+            })
+        
+        # Combine original and reverse pairs for visualization
+        vis_manifesto_df = pd.concat([
             manifesto_distances_df, 
+            pd.DataFrame(reverse_manifesto_distances)
+        ], ignore_index=True)
+        
+        # Create the pivot table with the complete data
+        overall_heatmap_data = pd.pivot_table(
+            vis_manifesto_df, 
             values='avg_theme_distance',
             index='manifesto1',
             columns='manifesto2'
