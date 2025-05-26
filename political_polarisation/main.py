@@ -407,10 +407,10 @@ def compare_manifesto_categories():
     
     # Calculate average distance for each manifesto pair
     for manifesto1, manifesto2 in manifesto_pairs:
-        # Get all theme distances for this manifesto pair
+        # Get all theme distances for this manifesto pair - need to check both directions
         pair_data = results_df[
-            (results_df["manifesto1"] == manifesto1) & 
-            (results_df["manifesto2"] == manifesto2)
+            ((results_df["manifesto1"] == manifesto1) & (results_df["manifesto2"] == manifesto2)) |
+            ((results_df["manifesto1"] == manifesto2) & (results_df["manifesto2"] == manifesto1))
         ]
         
         # Calculate average distance across all themes
