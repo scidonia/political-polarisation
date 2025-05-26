@@ -412,7 +412,9 @@ def compare_manifesto_categories():
     # Get unique manifesto pairs from the theme distances
     manifesto_pairs = set()
     for _, row in results_df.iterrows():
-        pair = (row["manifesto1"], row["manifesto2"])
+        # Sort the manifesto names to ensure we only have one pair regardless of order
+        manifesto_a, manifesto_b = sorted([row["manifesto1"], row["manifesto2"]])
+        pair = (manifesto_a, manifesto_b)
         manifesto_pairs.add(pair)
     
     # Calculate average distance for each manifesto pair
