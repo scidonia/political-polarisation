@@ -349,26 +349,14 @@ def compare_manifesto_categories():
         # This will create a single heatmap with manifesto pairs on one axis and themes on the other
 
         # Create a new column with manifesto pair names for better readability
+        # Sort manifesto names to ensure consistent pair naming
         results_df['manifesto_pair'] = results_df.apply(
-            lambda row: f"{row['manifesto1']} vs {row['manifesto2']}", axis=1
+            lambda row: f"{min(row['manifesto1'], row['manifesto2'])} vs {max(row['manifesto1'], row['manifesto2'])}", 
+            axis=1
         )
-
-        # Add the reverse pairs to make the heatmap complete
-        # This is just for visualization - we only computed half the pairs to avoid redundancy
-        reverse_results = []
-        for _, row in results_df.iterrows():
-            if row['manifesto1'] != row['manifesto2']:  # Skip self-comparisons
-                reverse_results.append({
-                    "manifesto1": row['manifesto2'],
-                    "theme1": row['theme2'],
-                    "manifesto2": row['manifesto1'],
-                    "theme2": row['theme1'],
-                    "cosine_distance": row['cosine_distance'],
-                    "manifesto_pair": f"{row['manifesto2']} vs {row['manifesto1']}"
-                })
         
-        # Add reverse pairs to the dataframe for complete visualization
-        vis_df = pd.concat([results_df, pd.DataFrame(reverse_results)], ignore_index=True)
+        # Use the original results without adding reverse pairs
+        vis_df = results_df
         
         # Create a pivot table with themes as columns and manifesto pairs as rows
         theme_heatmap_data = pd.pivot_table(
