@@ -195,7 +195,8 @@ def compare_manifesto_categories():
     
     # Join vectors with chunks to get manifesto and theme for each vector
     chunks = chunks.with_column("hash", df.functions.md5(df.col("text")))
-    joined = chunks.join(vectors, left_on=["hash"], right_on=["hash"])
+    vectors = vectors.with_column_renamed("hash", "vector_hash")
+    joined = chunks.join(vectors, left_on=["hash"], right_on=["vector_hash"])
     
     # Convert to pandas for easier processing
     joined_pd = joined.select(
