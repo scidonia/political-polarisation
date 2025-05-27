@@ -497,6 +497,40 @@ def compare_manifesto_categories():
     eprintln(f"Comparison complete! Results saved to {results_path}")
     return results_df
 
+def calculate_string_distance(string1, string2):
+    """
+    Calculate the cosine distance between two strings using the same model as the pipeline.
+    
+    Args:
+        string1: First string to compare
+        string2: Second string to compare
+        
+    Returns:
+        float: Cosine distance between the two strings
+    """
+    import torch.nn.functional as F
+    from sentence_transformers import SentenceTransformer
+    
+    eprintln("Initializing model...")
+    model = SentenceTransformer(MODEL, trust_remote_code=True)
+    
+    eprintln("Encoding strings...")
+    # Encode both strings
+    embedding1 = model.encode(string1, convert_to_tensor=True)
+    embedding2 = model.encode(string2, convert_to_tensor=True)
+    
+    # Normalize embeddings
+    embedding1 = F.normalize(embedding1, p=2, dim=0)
+    embedding2 = F.normalize(embedding2, p=2, dim=0)
+    
+    # Calculate cosine similarity
+    cosine_sim = torch.dot(embedding1, embedding2).item()
+    
+    # Convert to distance
+    cosine_dist = 1.0 - cosine_sim
+    
+    return cosine_dist
+
 def process_csv_pipeline(csv_path="uk_manifesto_truncated.csv", chunk_size=1000):
     """
     Process a CSV file through the entire pipeline:

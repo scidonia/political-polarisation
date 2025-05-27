@@ -6,6 +6,7 @@ from political_polarisation.main import (
     vectorize_records,
     process_csv_pipeline,
     compare_manifesto_categories,
+    calculate_string_distance,
 )
 
 
@@ -54,3 +55,22 @@ def cli_compare_categories():
     )
     args = parser.parse_args()
     compare_manifesto_categories()
+
+
+def cli_string_distance():
+    parser = argparse.ArgumentParser(
+        description="Calculate cosine distance between two strings"
+    )
+    parser.add_argument(
+        "string1", 
+        help="First string to compare"
+    )
+    parser.add_argument(
+        "string2", 
+        help="Second string to compare"
+    )
+    args = parser.parse_args()
+    
+    distance = calculate_string_distance(args.string1, args.string2)
+    print(f"Cosine distance: {distance:.6f}")
+    print(f"Cosine similarity: {1.0 - distance:.6f}")
