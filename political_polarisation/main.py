@@ -603,6 +603,7 @@ def analyze_story_characters(story_path, characters_csv, model_name=None, debug=
     for chunk in chunks:
         # Find all bracketed references in the chunk
         references = re.findall(r"\[(.*?)\]", chunk.text)
+        references = list(set(references))
         if references:
             all_references.extend([(ref, chunk) for ref in references])
 
@@ -616,8 +617,9 @@ def analyze_story_characters(story_path, characters_csv, model_name=None, debug=
         description = row["description"]
 
         # Create embedding for character description
-        task = "Given a character with a detailed description, determine if they match a reference in a story passage"
-        prompt = f"Instruct: {task}\nCharacter named '{name}' with description: {description}\nWhen analyzing story passages, identify if references like 'he', 'she', 'they', or specific names refer to this character based on context, actions, and attributes."
+        task = "Given a character with a detailed description, determine if they match a reference in a story passage."
+        prompt = f"Instruct: {task}\nThe individual to identify {name}."
+        text = f"Name: {name}\nDescription: {description}"
         embedding = model.encode(description, prompt=prompt, convert_to_tensor=True)
         embedding = F.normalize(embedding, p=2, dim=0)
         character_embeddings[name] = embedding
@@ -668,11 +670,7 @@ def analyze_story_characters(story_path, characters_csv, model_name=None, debug=
 
         if debug:
             print("\n" + "=" * 80)
-            print(
-                f"PASSAGE: {chunk.text[:200]}..."
-                if len(chunk.text) > 200
-                else f"PASSAGE: {chunk.text}"
-            )
+            print(f"PASSAGE: {chunk.text}")
             print(f"REFERENCE: [{reference}]")
             print(f"BEST MATCH: {best_match[0]} (similarity: {best_match[1]:.4f})")
             print("ALL SIMILARITIES:")
