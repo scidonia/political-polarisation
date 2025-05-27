@@ -625,34 +625,48 @@ def analyze_story_characters(story_path, characters_csv, model_name=None, debug=
     # Process each reference and chunk pair
     eprintln("Analyzing character references in chunks")
     results = []
+    
+    # Track unique reference-chunk pairs to avoid redundant processing
+    processed_pairs = {}
 
     for reference, chunk in all_references:
-        # Create embedding for the chunk with context about the reference
-        task = (
-            "Identify which character this reference refers to in the following passage"
-        )
-        prompt = f"Instruct: {task}\nReference '[{reference}]' appears in this passage. Determine which character this reference is pointing to based on context, actions, and attributes described."
-        chunk_embedding = model.encode(
-            chunk.text, prompt=prompt, convert_to_tensor=True
-        )
-        chunk_embedding = F.normalize(chunk_embedding, p=2, dim=0)
+        # Create a key for this reference-chunk pair
+        pair_key = (reference, chunk.text)
+        
+        # Skip if we've already processed this exact reference-chunk pair
+        if pair_key in processed_pairs:
+            # Reuse the previous result
+            result = processed_pairs[pair_key].copy()
+        else:
+            # Create embedding for the chunk with context about the reference
+            task = (
+                "Identify which character this reference refers to in the following passage"
+            )
+            prompt = f"Instruct: {task}\nReference '[{reference}]' appears in this passage. Determine which character this reference is pointing to based on context, actions, and attributes described."
+            chunk_embedding = model.encode(
+                chunk.text, prompt=prompt, convert_to_tensor=True
+            )
+            chunk_embedding = F.normalize(chunk_embedding, p=2, dim=0)
 
-        # Compare with each character embedding
-        similarities = {}
-        for char_name, char_embedding in character_embeddings.items():
-            similarity = torch.dot(chunk_embedding, char_embedding).item()
-            similarities[char_name] = similarity
+            # Compare with each character embedding
+            similarities = {}
+            for char_name, char_embedding in character_embeddings.items():
+                similarity = torch.dot(chunk_embedding, char_embedding).item()
+                similarities[char_name] = similarity
 
-        # Find the best match
-        best_match = max(similarities.items(), key=lambda x: x[1])
+            # Find the best match
+            best_match = max(similarities.items(), key=lambda x: x[1])
 
-        result = {
-            "chunk": chunk.text,
-            "reference": reference,
-            "best_match": best_match[0],
-            "similarity": best_match[1],
-            "all_similarities": similarities,
-        }
+            result = {
+                "chunk": chunk.text,
+                "reference": reference,
+                "best_match": best_match[0],
+                "similarity": best_match[1],
+                "all_similarities": similarities,
+            }
+            
+            # Store this result for future identical pairs
+            processed_pairs[pair_key] = result.copy()
 
         if debug:
             print("\n" + "=" * 80)
