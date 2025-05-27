@@ -625,23 +625,21 @@ def analyze_story_characters(story_path, characters_csv, model_name=None, debug=
     # Process each reference and chunk pair
     eprintln("Analyzing character references in chunks")
     results = []
-    
+
     # Track unique reference-chunk pairs to avoid redundant processing
     processed_pairs = {}
 
     for reference, chunk in all_references:
         # Create a key for this reference-chunk pair
         pair_key = (reference, chunk.text)
-        
+
         # Skip if we've already processed this exact reference-chunk pair
         if pair_key in processed_pairs:
             # Reuse the previous result
             result = processed_pairs[pair_key].copy()
         else:
             # Create embedding for the chunk with context about the reference
-            task = (
-                "Identify which character this reference refers to in the following passage"
-            )
+            task = "Identify which character this reference refers to in the following passage"
             prompt = f"Instruct: {task}\nReference '[{reference}]' appears in this passage. Determine which character this reference is pointing to based on context, actions, and attributes described."
             chunk_embedding = model.encode(
                 chunk.text, prompt=prompt, convert_to_tensor=True
@@ -664,7 +662,7 @@ def analyze_story_characters(story_path, characters_csv, model_name=None, debug=
                 "similarity": best_match[1],
                 "all_similarities": similarities,
             }
-            
+
             # Store this result for future identical pairs
             processed_pairs[pair_key] = result.copy()
 
