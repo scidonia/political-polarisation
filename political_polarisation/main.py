@@ -177,19 +177,19 @@ def compare_manifesto_categories():
     """
     Compare each manifesto's category with categories in every other manifesto
     using cosine distance implemented with torch.
-    
+
     Returns a DataFrame with pairwise distances between manifesto categories.
     """
     import torch.nn.functional as F
     import pandas as pd
     import numpy as np
-    
+
     ctx = build_session_context()
     eprintln("Loading vectors and chunks...")
-    
+
     # Load vectors
     vectors = ctx.read_parquet("output/vectors/")
-    
+
     # Load chunks with manifesto and theme information
     chunks = ctx.read_parquet("output/chunks/")
 
@@ -197,19 +197,16 @@ def compare_manifesto_categories():
     chunks = chunks.with_column("hash", df.functions.md5(df.col("text")))
     vectors = vectors.with_column_renamed("hash", "vector_hash")
     joined = chunks.join(vectors, left_on=["hash"], right_on=["vector_hash"])
-    
+
     # Convert to pandas for easier processing
     joined_pd = joined.select(
-        df.col("manifesto"), 
-        df.col("theme"), 
-        df.col("themedetail"),
-        df.col("embedding")
+        df.col("manifesto"), df.col("theme"), df.col("themedetail"), df.col("embedding")
     ).to_pandas()
-    
+
     # Group by manifesto and theme to get average embeddings
     eprintln("Computing average embeddings for each manifesto-theme combination...")
     grouped = joined_pd.groupby(["manifesto", "theme"])
-    
+
     # Calculate average embeddings for each manifesto-theme combination
     avg_embeddings = {}
     for (manifesto, theme), group in grouped:
@@ -227,7 +224,9 @@ def compare_manifesto_categories():
 
     for i, (manifesto1, theme1) in enumerate(keys):
         for j, (manifesto2, theme2) in enumerate(keys):
-            if theme1 != theme2 or i >= j:  # Skip different themes and only compute upper triangle
+            if (
+                theme1 != theme2 or i >= j
+            ):  # Skip different themes and only compute upper triangle
                 continue
 
             emb1 = avg_embeddings[(manifesto1, theme1)]
@@ -238,13 +237,15 @@ def compare_manifesto_categories():
             cosine_sim = torch.dot(emb1, emb2).item()
             cosine_dist = 1.0 - cosine_sim
 
-            results.append({
-                "manifesto1": manifesto1,
-                "theme1": theme1,
-                "manifesto2": manifesto2,
-                "theme2": theme2,
-                "cosine_distance": cosine_dist
-            })
+            results.append(
+                {
+                    "manifesto1": manifesto1,
+                    "theme1": theme1,
+                    "manifesto2": manifesto2,
+                    "theme2": theme2,
+                    "cosine_distance": cosine_dist,
+                }
+            )
 
     # 2: Calculate distance of every manifesto chunk to every other
     eprintln("Calculating pairwise distances between all manifesto chunks...")
@@ -283,13 +284,15 @@ def compare_manifesto_categories():
             # Calculate average distance
             avg_distance = distance_matrix.mean().item()
 
-            chunk_distances.append({
-                "manifesto1": manifesto1,
-                "manifesto2": manifesto2,
-                "avg_chunk_distance": avg_distance,
-                "min_chunk_distance": distance_matrix.min().item(),
-                "max_chunk_distance": distance_matrix.max().item()
-            })
+            chunk_distances.append(
+                {
+                    "manifesto1": manifesto1,
+                    "manifesto2": manifesto2,
+                    "avg_chunk_distance": avg_distance,
+                    "min_chunk_distance": distance_matrix.min().item(),
+                    "max_chunk_distance": distance_matrix.max().item(),
+                }
+            )
 
     # Create DataFrame with chunk distance results
     chunk_distances_df = pd.DataFrame(chunk_distances)
@@ -306,31 +309,27 @@ def compare_manifesto_categories():
 
         # Create a pivot table for the heatmap
         heatmap_data = pd.pivot_table(
-            chunk_distances_df, 
-            values='avg_chunk_distance',
-            index='manifesto1',
-            columns='manifesto2'
+            chunk_distances_df,
+            values="avg_chunk_distance",
+            index="manifesto1",
+            columns="manifesto2",
         )
 
         # Create the heatmap
         plt.figure(figsize=(12, 10))
-        sns.heatmap(
-            heatmap_data, 
-            annot=True, 
-            cmap="YlGnBu", 
-            linewidths=.5, 
-            fmt=".3f"
-        )
-        plt.title('Average Cosine Distance Between Manifesto Chunks')
+        sns.heatmap(heatmap_data, annot=True, cmap="YlGnBu", linewidths=0.5, fmt=".3f")
+        plt.title("Average Cosine Distance Between Manifesto Chunks")
 
         # Save the heatmap
         os.makedirs("output/visualizations/", exist_ok=True)
         heatmap_path = "output/visualizations/manifesto_distance_heatmap.png"
-        plt.savefig(heatmap_path, bbox_inches='tight', dpi=300)
+        plt.savefig(heatmap_path, bbox_inches="tight", dpi=300)
         plt.close()
         eprintln(f"Heatmap saved to {heatmap_path}")
     except ImportError:
-        eprintln("Warning: seaborn or matplotlib not installed. Skipping heatmap generation.")
+        eprintln(
+            "Warning: seaborn or matplotlib not installed. Skipping heatmap generation."
+        )
 
     # Create DataFrame with results from theme comparisons
     results_df = pd.DataFrame(results)
@@ -349,7 +348,7 @@ def compare_manifesto_categories():
         # This will create a single heatmap with manifesto pairs on one axis and themes on the other
 
         # Create a new column with manifesto pair names for better readability
-        results_df['manifesto_pair'] = results_df.apply(
+        results_df["manifesto_pair"] = results_df.apply(
             lambda row: f"{row['manifesto1']} vs {row['manifesto2']}", axis=1
         )
 
@@ -357,207 +356,214 @@ def compare_manifesto_categories():
         # This is just for visualization - we only computed half the pairs to avoid redundancy
         reverse_results = []
         for _, row in results_df.iterrows():
-            if row['manifesto1'] != row['manifesto2']:  # Skip self-comparisons
-                reverse_results.append({
-                    "manifesto1": row['manifesto2'],
-                    "theme1": row['theme2'],
-                    "manifesto2": row['manifesto1'],
-                    "theme2": row['theme1'],
-                    "cosine_distance": row['cosine_distance'],
-                    "manifesto_pair": f"{row['manifesto2']} vs {row['manifesto1']}"
-                })
+            if row["manifesto1"] != row["manifesto2"]:  # Skip self-comparisons
+                reverse_results.append(
+                    {
+                        "manifesto1": row["manifesto2"],
+                        "theme1": row["theme2"],
+                        "manifesto2": row["manifesto1"],
+                        "theme2": row["theme1"],
+                        "cosine_distance": row["cosine_distance"],
+                        "manifesto_pair": f"{row['manifesto2']} vs {row['manifesto1']}",
+                    }
+                )
 
         # Add reverse pairs to the dataframe for complete visualization
-        vis_df = pd.concat([results_df, pd.DataFrame(reverse_results)], ignore_index=True)
+        vis_df = pd.concat(
+            [results_df, pd.DataFrame(reverse_results)], ignore_index=True
+        )
 
         # Create a pivot table with themes as columns and manifesto pairs as rows
         theme_heatmap_data = pd.pivot_table(
-            vis_df,
-            values='cosine_distance',
-            index='manifesto_pair',
-            columns='theme1'
+            vis_df, values="cosine_distance", index="manifesto_pair", columns="theme1"
         )
-        
+
         # Create the heatmap
         plt.figure(figsize=(20, 16))
         sns.heatmap(
-            theme_heatmap_data,
-            annot=True,
-            cmap="YlGnBu",
-            linewidths=.5,
-            fmt=".3f"
+            theme_heatmap_data, annot=True, cmap="YlGnBu", linewidths=0.5, fmt=".3f"
         )
-        plt.title('Cosine Distance Between Manifestos by Theme')
-        plt.xlabel('Theme')
-        plt.ylabel('Manifesto Pair')
-        
+        plt.title("Cosine Distance Between Manifestos by Theme")
+        plt.xlabel("Theme")
+        plt.ylabel("Manifesto Pair")
+
         # Adjust layout to make room for labels
         plt.tight_layout()
-        
+
         # Save the heatmap
         os.makedirs("output/visualizations/", exist_ok=True)
         theme_heatmap_path = "output/visualizations/manifesto_theme_heatmap.png"
-        plt.savefig(theme_heatmap_path, bbox_inches='tight', dpi=300)
+        plt.savefig(theme_heatmap_path, bbox_inches="tight", dpi=300)
         plt.close()
         eprintln(f"Theme heatmap saved to {theme_heatmap_path}")
     except Exception as e:
         eprintln(f"Warning: Error creating theme heatmaps: {e}")
-    
+
     # 3: Calculate overall average distances between one manifesto and another
     eprintln("Calculating overall average distances between manifestos...")
-    
+
     # Group by manifesto pair to get average distance across all themes
     manifesto_distances = []
-    
+
     # Get unique manifesto pairs from the theme distances
     manifesto_pairs = set()
     for _, row in results_df.iterrows():
         pair = (row["manifesto1"], row["manifesto2"])
         manifesto_pairs.add(pair)
-    
+
     # Calculate average distance for each manifesto pair
     for manifesto1, manifesto2 in manifesto_pairs:
         # Get all theme distances for this manifesto pair
         pair_data = results_df[
-            (results_df["manifesto1"] == manifesto1) & 
-            (results_df["manifesto2"] == manifesto2)
+            (results_df["manifesto1"] == manifesto1)
+            & (results_df["manifesto2"] == manifesto2)
         ]
-        
+
         # Calculate average distance across all themes
         avg_distance = pair_data["cosine_distance"].mean()
-        
-        manifesto_distances.append({
-            "manifesto1": manifesto1,
-            "manifesto2": manifesto2,
-            "avg_theme_distance": avg_distance,
-            "min_theme_distance": pair_data["cosine_distance"].min(),
-            "max_theme_distance": pair_data["cosine_distance"].max(),
-            "theme_count": len(pair_data)
-        })
-    
+
+        manifesto_distances.append(
+            {
+                "manifesto1": manifesto1,
+                "manifesto2": manifesto2,
+                "avg_theme_distance": avg_distance,
+                "min_theme_distance": pair_data["cosine_distance"].min(),
+                "max_theme_distance": pair_data["cosine_distance"].max(),
+                "theme_count": len(pair_data),
+            }
+        )
+
     # Create DataFrame with overall manifesto distance results
     manifesto_distances_df = pd.DataFrame(manifesto_distances)
-    
+
     # Save results to CSV
     manifesto_distances_path = "output/comparisons/overall_manifesto_distances.csv"
     manifesto_distances_df.to_csv(manifesto_distances_path, index=False)
     eprintln(f"Overall manifesto distances saved to {manifesto_distances_path}")
-    
+
     # Create a heatmap for overall manifesto distances
     try:
         import seaborn as sns
         import matplotlib.pyplot as plt
-        
+
         # Create a pivot table for the heatmap
         # Add the reverse pairs for visualization
         reverse_manifesto_distances = []
         for _, row in manifesto_distances_df.iterrows():
-            reverse_manifesto_distances.append({
-                "manifesto1": row['manifesto2'],
-                "manifesto2": row['manifesto1'],
-                "avg_theme_distance": row['avg_theme_distance'],
-                "min_theme_distance": row['min_theme_distance'],
-                "max_theme_distance": row['max_theme_distance'],
-                "theme_count": row['theme_count']
-            })
-        
+            reverse_manifesto_distances.append(
+                {
+                    "manifesto1": row["manifesto2"],
+                    "manifesto2": row["manifesto1"],
+                    "avg_theme_distance": row["avg_theme_distance"],
+                    "min_theme_distance": row["min_theme_distance"],
+                    "max_theme_distance": row["max_theme_distance"],
+                    "theme_count": row["theme_count"],
+                }
+            )
+
         # Combine original and reverse pairs for visualization
-        vis_manifesto_df = pd.concat([
-            manifesto_distances_df, 
-            pd.DataFrame(reverse_manifesto_distances)
-        ], ignore_index=True)
-        
+        vis_manifesto_df = pd.concat(
+            [manifesto_distances_df, pd.DataFrame(reverse_manifesto_distances)],
+            ignore_index=True,
+        )
+
         # Create the pivot table with the complete data
         overall_heatmap_data = pd.pivot_table(
-            vis_manifesto_df, 
-            values='avg_theme_distance',
-            index='manifesto1',
-            columns='manifesto2'
+            vis_manifesto_df,
+            values="avg_theme_distance",
+            index="manifesto1",
+            columns="manifesto2",
         )
-        
+
         # Create the heatmap
         plt.figure(figsize=(12, 10))
         sns.heatmap(
-            overall_heatmap_data, 
-            annot=True, 
-            cmap="YlGnBu", 
-            linewidths=.5, 
-            fmt=".3f"
+            overall_heatmap_data, annot=True, cmap="YlGnBu", linewidths=0.5, fmt=".3f"
         )
-        plt.title('Average Cosine Distance Between Manifestos (Across All Themes)')
-        
+        plt.title("Average Cosine Distance Between Manifestos (Across All Themes)")
+
         # Save the heatmap
-        overall_heatmap_path = "output/visualizations/overall_manifesto_distance_heatmap.png"
-        plt.savefig(overall_heatmap_path, bbox_inches='tight', dpi=300)
+        overall_heatmap_path = (
+            "output/visualizations/overall_manifesto_distance_heatmap.png"
+        )
+        plt.savefig(overall_heatmap_path, bbox_inches="tight", dpi=300)
         plt.close()
         eprintln(f"Overall heatmap saved to {overall_heatmap_path}")
     except ImportError:
-        eprintln("Warning: seaborn or matplotlib not installed. Skipping overall heatmap generation.")
+        eprintln(
+            "Warning: seaborn or matplotlib not installed. Skipping overall heatmap generation."
+        )
 
     eprintln(f"Comparison complete! Results saved to {results_path}")
     return results_df
 
+
 def calculate_string_distance(string1, string2, as_query=False, model_name=None):
     """
     Calculate the cosine distance between two strings using the specified model.
-    
+
     Args:
         string1: First string to compare
         string2: Second string to compare
         as_query: If True, treats string1 as a query
         model_name: Name of the model to use. If None, uses the default model from context.py
-        
+
     Returns:
         float: Cosine distance between the two strings
     """
     import torch.nn.functional as F
     from sentence_transformers import SentenceTransformer
-    
+
     # Use the specified model or default to the one in context.py
     model_to_use = model_name if model_name else MODEL
     eprintln(f"Initializing model: {model_to_use}")
-    
+
     # Initialize the model
     model = SentenceTransformer(model_to_use, trust_remote_code=True)
-    
+
     eprintln("Encoding strings...")
-    
+
     # Handle query formatting based on the model
     if as_query:
         eprintln("Treating first string as a query...")
         if "Mistral" in model_to_use:
             # Mistral model requires a prompt for queries
-            task = "Given a question, retrieve relevant passages that answer the question"
+            task = (
+                "Given a question, retrieve relevant passages that answer the question"
+            )
             prompt = f"Instruct: {task}\nQuery: "
             embedding1 = model.encode(string1, prompt=prompt, convert_to_tensor=True)
         elif "Qwen" in model_to_use:
             # Qwen model uses prompt_name parameter
-            embedding1 = model.encode(string1, convert_to_tensor=True, prompt_name="query")
+            embedding1 = model.encode(
+                string1, convert_to_tensor=True, prompt_name="query"
+            )
         else:
             # Default behavior for other models
             embedding1 = model.encode(string1, convert_to_tensor=True)
     else:
         embedding1 = model.encode(string1, convert_to_tensor=True)
-        
+
     # Encode the second string normally
     embedding2 = model.encode(string2, convert_to_tensor=True)
-    
+
     # Normalize embeddings
     embedding1 = F.normalize(embedding1, p=2, dim=0)
     embedding2 = F.normalize(embedding2, p=2, dim=0)
-    
+
     # Calculate cosine similarity
     cosine_sim = torch.dot(embedding1, embedding2).item()
-    
+
     # Convert to distance
     cosine_dist = 1.0 - cosine_sim
-    
+
     return cosine_dist
+
 
 def analyze_story_characters(story_path, characters_csv, model_name=None):
     """
     Analyze a story text file to identify character references and match them with character descriptions.
-    
+
     Args:
         story_path: Path to the story text file
         characters_csv: Path to the CSV file containing character descriptions
@@ -568,120 +574,125 @@ def analyze_story_characters(story_path, characters_csv, model_name=None):
     import torch
     import torch.nn.functional as F
     from sentence_transformers import SentenceTransformer
-    
+
     # Use the specified model or default to Mistral for character analysis
     model_to_use = model_name if model_name else MODELS.get("mistral")
     eprintln(f"Initializing model: {model_to_use}")
-    
+
     # Initialize the model
     model = SentenceTransformer(model_to_use, trust_remote_code=True)
-    
+
     # Load the story text
     eprintln(f"Loading story from {story_path}")
-    with open(story_path, 'r') as f:
+    with open(story_path, "r") as f:
         story_text = f.read()
-    
+
     # Load character descriptions
     eprintln(f"Loading character descriptions from {characters_csv}")
     characters_df = pd.read_csv(characters_csv)
-    
+
     # Create phrasal chunks from the story
     eprintln("Creating phrasal chunks from story text")
     phrases = get_phrases(story_text)
     chunks = chunk_phrases(phrases, 500)  # Adjust chunk size as needed
-    
+
     # Extract character references from brackets in the text
     eprintln("Extracting character references")
     all_references = []
     for chunk in chunks:
         # Find all bracketed references in the chunk
-        references = re.findall(r'\[(.*?)\]', chunk.text)
+        references = re.findall(r"\[(.*?)\]", chunk.text)
         if references:
             all_references.extend([(ref, chunk) for ref in references])
-    
+
     eprintln(f"Found {len(all_references)} character references in the story")
-    
+
     # Create embeddings for each character description
     eprintln("Creating embeddings for character descriptions")
     character_embeddings = {}
     for _, row in characters_df.iterrows():
-        name = row['name']
-        description = row['description']
-        
+        name = row["name"]
+        description = row["description"]
+
         # Create embedding for character description
         task = "Given an individual with a short biography, determine whether they are the person referenced in a passage"
         prompt = f"Instruct: {task}\nIndividual named {name}: "
         embedding = model.encode(description, prompt=prompt, convert_to_tensor=True)
         embedding = F.normalize(embedding, p=2, dim=0)
         character_embeddings[name] = embedding
-    
+
     # Process each reference and chunk pair
     eprintln("Analyzing character references in chunks")
     results = []
-    
+
     for reference, chunk in all_references:
         # Create embedding for the chunk
         chunk_embedding = model.encode(chunk.text, convert_to_tensor=True)
         chunk_embedding = F.normalize(chunk_embedding, p=2, dim=0)
-        
+
         # Compare with each character embedding
         similarities = {}
         for char_name, char_embedding in character_embeddings.items():
             similarity = torch.dot(chunk_embedding, char_embedding).item()
             similarities[char_name] = similarity
-        
+
         # Find the best match
         best_match = max(similarities.items(), key=lambda x: x[1])
-        
-        results.append({
-            "chunk": chunk.text,
-            "reference": reference,
-            "best_match": best_match[0],
-            "similarity": best_match[1],
-            "all_similarities": similarities
-        })
-    
+
+        results.append(
+            {
+                "chunk": chunk.text,
+                "reference": reference,
+                "best_match": best_match[0],
+                "similarity": best_match[1],
+                "all_similarities": similarities,
+            }
+        )
+
     # Create output directory
     os.makedirs("output/story_analysis/", exist_ok=True)
-    
+
     # Save results to CSV
     results_df = pd.DataFrame(results)
     results_path = "output/story_analysis/character_references.csv"
     results_df.to_csv(results_path, index=False)
-    
+
     # Print summary
     eprintln(f"Analysis complete! Results saved to {results_path}")
-    
+
     # Print a summary of the results
     print("\nCharacter Reference Analysis Summary:")
     print("=====================================")
-    
+
     # Group by reference and count occurrences
     reference_counts = {}
     for result in results:
         ref = result["reference"]
         if ref not in reference_counts:
             reference_counts[ref] = {"count": 0, "matches": {}}
-        
+
         reference_counts[ref]["count"] += 1
-        
+
         best_match = result["best_match"]
         if best_match not in reference_counts[ref]["matches"]:
             reference_counts[ref]["matches"][best_match] = 0
         reference_counts[ref]["matches"][best_match] += 1
-    
+
     # Print the summary
     for ref, data in reference_counts.items():
         print(f"\nReference: {ref}")
         print(f"Occurrences: {data['count']}")
         print("Matched to:")
-        
+
         # Sort matches by count
-        sorted_matches = sorted(data["matches"].items(), key=lambda x: x[1], reverse=True)
+        sorted_matches = sorted(
+            data["matches"].items(), key=lambda x: x[1], reverse=True
+        )
         for match, count in sorted_matches:
             print(f"  - {match}: {count} times ({count/data['count']*100:.1f}%)")
-    
+
     return results_df
+
 
 def process_csv_pipeline(csv_path="uk_manifesto_truncated.csv", chunk_size=1000):
     """
