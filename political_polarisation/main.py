@@ -497,14 +497,15 @@ def compare_manifesto_categories():
     eprintln(f"Comparison complete! Results saved to {results_path}")
     return results_df
 
-def calculate_string_distance(string1, string2, as_query=False):
+def calculate_string_distance(string1, string2, as_query=False, model_name=None):
     """
-    Calculate the cosine distance between two strings using the same model as the pipeline.
+    Calculate the cosine distance between two strings using the specified model.
     
     Args:
         string1: First string to compare
         string2: Second string to compare
-        as_query: If True, treats string1 as a query by passing prompt_name="query" to the model
+        as_query: If True, treats string1 as a query
+        model_name: Name of the model to use. If None, uses the default model from context.py
         
     Returns:
         float: Cosine distance between the two strings
@@ -512,16 +513,33 @@ def calculate_string_distance(string1, string2, as_query=False):
     import torch.nn.functional as F
     from sentence_transformers import SentenceTransformer
     
-    eprintln("Initializing model...")
-    model = SentenceTransformer(MODEL, trust_remote_code=True)
+    # Use the specified model or default to the one in context.py
+    model_to_use = model_name if model_name else MODEL
+    eprintln(f"Initializing model: {model_to_use}")
+    
+    # Initialize the model
+    model = SentenceTransformer(model_to_use, trust_remote_code=True)
     
     eprintln("Encoding strings...")
-    # Encode both strings
+    
+    # Handle query formatting based on the model
     if as_query:
         eprintln("Treating first string as a query...")
-        embedding1 = model.encode(string1, convert_to_tensor=True, prompt_name="query")
+        if "Mistral" in model_to_use:
+            # Mistral model requires a specific format for queries
+            task = "Given a question, retrieve relevant passages that answer the question"
+            prompt = f"Instruct: {task}\nQuery: {string1}"
+            embedding1 = model.encode(prompt, convert_to_tensor=True)
+        elif "Qwen" in model_to_use:
+            # Qwen model uses prompt_name parameter
+            embedding1 = model.encode(string1, convert_to_tensor=True, prompt_name="query")
+        else:
+            # Default behavior for other models
+            embedding1 = model.encode(string1, convert_to_tensor=True)
     else:
         embedding1 = model.encode(string1, convert_to_tensor=True)
+        
+    # Encode the second string normally
     embedding2 = model.encode(string2, convert_to_tensor=True)
     
     # Normalize embeddings

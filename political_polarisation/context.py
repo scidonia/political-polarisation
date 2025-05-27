@@ -19,8 +19,15 @@ TEXT_SCHEMA = pa.schema(
     ]
 )
 
+# Default model
 MODEL = "Alibaba-NLP/gte-Qwen2-7B-instruct"
 EMBEDDING_SIZE = 4096
+
+# Available models
+MODELS = {
+    "qwen": "Alibaba-NLP/gte-Qwen2-7B-instruct",
+    "mistral": "Linq-AI-Research/Linq-Embed-Mistral"
+}
 
 VECTORS_SCHEMA = pa.schema(
     [

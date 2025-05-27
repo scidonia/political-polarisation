@@ -72,10 +72,25 @@ def cli_string_distance():
     parser.add_argument(
         "--as-query", 
         action="store_true",
-        help="Treat the first string as a query (passes prompt_name='query' to the model)"
+        help="Treat the first string as a query"
+    )
+    parser.add_argument(
+        "--model",
+        choices=["qwen", "mistral"],
+        default=None,
+        help="Model to use for embedding (qwen or mistral)"
     )
     args = parser.parse_args()
     
-    distance = calculate_string_distance(args.string1, args.string2, as_query=args.as_query)
+    # Get the model name from the MODELS dictionary in context.py
+    from political_polarisation.context import MODELS
+    model_name = MODELS.get(args.model) if args.model else None
+    
+    distance = calculate_string_distance(
+        args.string1, 
+        args.string2, 
+        as_query=args.as_query,
+        model_name=model_name
+    )
     print(f"Cosine distance: {distance:.6f}")
     print(f"Cosine similarity: {1.0 - distance:.6f}")
