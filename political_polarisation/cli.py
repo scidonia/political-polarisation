@@ -69,8 +69,13 @@ def cli_string_distance():
         "string2", 
         help="Second string to compare"
     )
+    parser.add_argument(
+        "--as-query", 
+        action="store_true",
+        help="Treat the first string as a query (passes prompt_name='query' to the model)"
+    )
     args = parser.parse_args()
     
-    distance = calculate_string_distance(args.string1, args.string2)
+    distance = calculate_string_distance(args.string1, args.string2, as_query=args.as_query)
     print(f"Cosine distance: {distance:.6f}")
     print(f"Cosine similarity: {1.0 - distance:.6f}")

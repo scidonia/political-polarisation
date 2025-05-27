@@ -497,13 +497,14 @@ def compare_manifesto_categories():
     eprintln(f"Comparison complete! Results saved to {results_path}")
     return results_df
 
-def calculate_string_distance(string1, string2):
+def calculate_string_distance(string1, string2, as_query=False):
     """
     Calculate the cosine distance between two strings using the same model as the pipeline.
     
     Args:
         string1: First string to compare
         string2: Second string to compare
+        as_query: If True, treats string1 as a query by passing prompt_name="query" to the model
         
     Returns:
         float: Cosine distance between the two strings
@@ -516,7 +517,11 @@ def calculate_string_distance(string1, string2):
     
     eprintln("Encoding strings...")
     # Encode both strings
-    embedding1 = model.encode(string1, convert_to_tensor=True)
+    if as_query:
+        eprintln("Treating first string as a query...")
+        embedding1 = model.encode(string1, convert_to_tensor=True, prompt_name="query")
+    else:
+        embedding1 = model.encode(string1, convert_to_tensor=True)
     embedding2 = model.encode(string2, convert_to_tensor=True)
     
     # Normalize embeddings
