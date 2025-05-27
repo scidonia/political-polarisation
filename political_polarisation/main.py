@@ -560,7 +560,7 @@ def calculate_string_distance(string1, string2, as_query=False, model_name=None)
     return cosine_dist
 
 
-def analyze_story_characters(story_path, characters_csv, model_name=None):
+def analyze_story_characters(story_path, characters_csv, model_name=None, debug=False):
     """
     Analyze a story text file to identify character references and match them with character descriptions.
 
@@ -568,6 +568,7 @@ def analyze_story_characters(story_path, characters_csv, model_name=None):
         story_path: Path to the story text file
         characters_csv: Path to the CSV file containing character descriptions
         model_name: Name of the model to use for embeddings
+        debug: If True, prints detailed debug information for each reference
     """
     import re
     import pandas as pd
@@ -639,15 +640,25 @@ def analyze_story_characters(story_path, characters_csv, model_name=None):
         # Find the best match
         best_match = max(similarities.items(), key=lambda x: x[1])
 
-        results.append(
-            {
-                "chunk": chunk.text,
-                "reference": reference,
-                "best_match": best_match[0],
-                "similarity": best_match[1],
-                "all_similarities": similarities,
-            }
-        )
+        result = {
+            "chunk": chunk.text,
+            "reference": reference,
+            "best_match": best_match[0],
+            "similarity": best_match[1],
+            "all_similarities": similarities,
+        }
+        
+        if debug:
+            print("\n" + "="*80)
+            print(f"PASSAGE: {chunk.text[:200]}..." if len(chunk.text) > 200 else f"PASSAGE: {chunk.text}")
+            print(f"REFERENCE: [{reference}]")
+            print(f"BEST MATCH: {best_match[0]} (similarity: {best_match[1]:.4f})")
+            print("ALL SIMILARITIES:")
+            for char, sim in sorted(similarities.items(), key=lambda x: x[1], reverse=True):
+                print(f"  - {char}: {sim:.4f}")
+            print("="*80)
+            
+        results.append(result)
 
     # Create output directory
     os.makedirs("output/story_analysis/", exist_ok=True)

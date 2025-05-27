@@ -117,6 +117,11 @@ def cli_analyze_story():
         default="mistral",
         help="Model to use for embedding (qwen or mistral)"
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print detailed debug information for each reference"
+    )
     args = parser.parse_args()
     
     # Get the model name from the MODELS dictionary in context.py
@@ -126,5 +131,6 @@ def cli_analyze_story():
     analyze_story_characters(
         args.story,
         args.characters,
-        model_name=model_name
+        model_name=model_name,
+        debug=args.debug
     )
