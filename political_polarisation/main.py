@@ -526,10 +526,10 @@ def calculate_string_distance(string1, string2, as_query=False, model_name=None)
     if as_query:
         eprintln("Treating first string as a query...")
         if "Mistral" in model_to_use:
-            # Mistral model requires a specific format for queries
+            # Mistral model requires a prompt for queries
             task = "Given a question, retrieve relevant passages that answer the question"
-            prompt = f"Instruct: {task}\nQuery: {string1}"
-            embedding1 = model.encode(prompt, convert_to_tensor=True)
+            prompt = f"Instruct: {task}\nQuery: "
+            embedding1 = model.encode(string1, prompt=prompt, convert_to_tensor=True)
         elif "Qwen" in model_to_use:
             # Qwen model uses prompt_name parameter
             embedding1 = model.encode(string1, convert_to_tensor=True, prompt_name="query")
