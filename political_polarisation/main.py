@@ -554,6 +554,135 @@ def calculate_string_distance(string1, string2, as_query=False, model_name=None)
     
     return cosine_dist
 
+def analyze_story_characters(story_path, characters_csv, model_name=None):
+    """
+    Analyze a story text file to identify character references and match them with character descriptions.
+    
+    Args:
+        story_path: Path to the story text file
+        characters_csv: Path to the CSV file containing character descriptions
+        model_name: Name of the model to use for embeddings
+    """
+    import re
+    import pandas as pd
+    import torch
+    import torch.nn.functional as F
+    from sentence_transformers import SentenceTransformer
+    
+    # Use the specified model or default to Mistral for character analysis
+    model_to_use = model_name if model_name else MODELS.get("mistral")
+    eprintln(f"Initializing model: {model_to_use}")
+    
+    # Initialize the model
+    model = SentenceTransformer(model_to_use, trust_remote_code=True)
+    
+    # Load the story text
+    eprintln(f"Loading story from {story_path}")
+    with open(story_path, 'r') as f:
+        story_text = f.read()
+    
+    # Load character descriptions
+    eprintln(f"Loading character descriptions from {characters_csv}")
+    characters_df = pd.read_csv(characters_csv)
+    
+    # Create phrasal chunks from the story
+    eprintln("Creating phrasal chunks from story text")
+    phrases = get_phrases(story_text)
+    chunks = chunk_phrases(phrases, 500)  # Adjust chunk size as needed
+    
+    # Extract character references from brackets in the text
+    eprintln("Extracting character references")
+    all_references = []
+    for chunk in chunks:
+        # Find all bracketed references in the chunk
+        references = re.findall(r'\[(.*?)\]', chunk.text)
+        if references:
+            all_references.extend([(ref, chunk) for ref in references])
+    
+    eprintln(f"Found {len(all_references)} character references in the story")
+    
+    # Create embeddings for each character description
+    eprintln("Creating embeddings for character descriptions")
+    character_embeddings = {}
+    for _, row in characters_df.iterrows():
+        name = row['name']
+        description = row['description']
+        
+        # Create embedding for character description
+        task = "Given an individual with a short biography, determine whether they are the person referenced in a passage"
+        prompt = f"Instruct: {task}\nIndividual named {name}: "
+        embedding = model.encode(description, prompt=prompt, convert_to_tensor=True)
+        embedding = F.normalize(embedding, p=2, dim=0)
+        character_embeddings[name] = embedding
+    
+    # Process each reference and chunk pair
+    eprintln("Analyzing character references in chunks")
+    results = []
+    
+    for reference, chunk in all_references:
+        # Create embedding for the chunk
+        chunk_embedding = model.encode(chunk.text, convert_to_tensor=True)
+        chunk_embedding = F.normalize(chunk_embedding, p=2, dim=0)
+        
+        # Compare with each character embedding
+        similarities = {}
+        for char_name, char_embedding in character_embeddings.items():
+            similarity = torch.dot(chunk_embedding, char_embedding).item()
+            similarities[char_name] = similarity
+        
+        # Find the best match
+        best_match = max(similarities.items(), key=lambda x: x[1])
+        
+        results.append({
+            "chunk": chunk.text,
+            "reference": reference,
+            "best_match": best_match[0],
+            "similarity": best_match[1],
+            "all_similarities": similarities
+        })
+    
+    # Create output directory
+    os.makedirs("output/story_analysis/", exist_ok=True)
+    
+    # Save results to CSV
+    results_df = pd.DataFrame(results)
+    results_path = "output/story_analysis/character_references.csv"
+    results_df.to_csv(results_path, index=False)
+    
+    # Print summary
+    eprintln(f"Analysis complete! Results saved to {results_path}")
+    
+    # Print a summary of the results
+    print("\nCharacter Reference Analysis Summary:")
+    print("=====================================")
+    
+    # Group by reference and count occurrences
+    reference_counts = {}
+    for result in results:
+        ref = result["reference"]
+        if ref not in reference_counts:
+            reference_counts[ref] = {"count": 0, "matches": {}}
+        
+        reference_counts[ref]["count"] += 1
+        
+        best_match = result["best_match"]
+        if best_match not in reference_counts[ref]["matches"]:
+            reference_counts[ref]["matches"][best_match] = 0
+        reference_counts[ref]["matches"][best_match] += 1
+    
+    # Print the summary
+    for ref, data in reference_counts.items():
+        print(f"\nReference: {ref}")
+        print(f"Occurrences: {data['count']}")
+        print("Matched to:")
+        
+        # Sort matches by count
+        sorted_matches = sorted(data["matches"].items(), key=lambda x: x[1], reverse=True)
+        for match, count in sorted_matches:
+            print(f"  - {match}: {count} times ({count/data['count']*100:.1f}%)")
+    
+    return results_df
+
 def process_csv_pipeline(csv_path="uk_manifesto_truncated.csv", chunk_size=1000):
     """
     Process a CSV file through the entire pipeline:

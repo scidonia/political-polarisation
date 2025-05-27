@@ -42,6 +42,7 @@ vectorize = 'political_polarisation.cli:cli_vectorize'
 process-csv = 'political_polarisation.cli:cli_process_csv'
 compare-categories = 'political_polarisation.cli:cli_compare_categories'
 string-distance = 'political_polarisation.cli:cli_string_distance'
+analyze-story = 'political_polarisation.cli:cli_analyze_story'
 
 [tool.hatch.build.targets.wheel]
 packages = ["political_polarisation"]
