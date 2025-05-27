@@ -62,36 +62,26 @@ def cli_string_distance():
     parser = argparse.ArgumentParser(
         description="Calculate cosine distance between two strings"
     )
+    parser.add_argument("string1", help="First string to compare")
+    parser.add_argument("string2", help="Second string to compare")
     parser.add_argument(
-        "string1", 
-        help="First string to compare"
-    )
-    parser.add_argument(
-        "string2", 
-        help="Second string to compare"
-    )
-    parser.add_argument(
-        "--as-query", 
-        action="store_true",
-        help="Treat the first string as a query"
+        "--as-query", action="store_true", help="Treat the first string as a query"
     )
     parser.add_argument(
         "--model",
         choices=["qwen", "mistral"],
         default=None,
-        help="Model to use for embedding (qwen or mistral)"
+        help="Model to use for embedding (qwen or mistral)",
     )
     args = parser.parse_args()
-    
+
     # Get the model name from the MODELS dictionary in context.py
     from political_polarisation.context import MODELS
+
     model_name = MODELS.get(args.model) if args.model else None
-    
+
     distance = calculate_string_distance(
-        args.string1, 
-        args.string2, 
-        as_query=args.as_query,
-        model_name=model_name
+        args.string1, args.string2, as_query=args.as_query, model_name=model_name
     )
     print(f"Cosine distance: {distance:.6f}")
     print(f"Cosine similarity: {1.0 - distance:.6f}")
@@ -102,35 +92,31 @@ def cli_analyze_story():
         description="Analyze story characters and their references"
     )
     parser.add_argument(
-        "--story", 
-        default="test_story.txt",
-        help="Path to the story text file"
+        "--story", default="test_story.txt", help="Path to the story text file"
     )
     parser.add_argument(
-        "--characters", 
+        "--characters",
         default="story_characters.csv",
-        help="Path to the CSV file with character descriptions"
+        help="Path to the CSV file with character descriptions",
     )
     parser.add_argument(
         "--model",
         choices=["qwen", "mistral"],
         default="mistral",
-        help="Model to use for embedding (qwen or mistral)"
+        help="Model to use for embedding (qwen or mistral)",
     )
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="Print detailed debug information for each reference"
+        help="Print detailed debug information for each reference",
     )
     args = parser.parse_args()
-    
+
     # Get the model name from the MODELS dictionary in context.py
     from political_polarisation.context import MODELS
+
     model_name = MODELS.get(args.model)
-    
+
     analyze_story_characters(
-        args.story,
-        args.characters,
-        model_name=model_name,
-        debug=args.debug
+        args.story, args.characters, model_name=model_name, debug=args.debug
     )

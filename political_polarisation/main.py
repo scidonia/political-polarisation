@@ -647,17 +647,23 @@ def analyze_story_characters(story_path, characters_csv, model_name=None, debug=
             "similarity": best_match[1],
             "all_similarities": similarities,
         }
-        
+
         if debug:
-            print("\n" + "="*80)
-            print(f"PASSAGE: {chunk.text[:200]}..." if len(chunk.text) > 200 else f"PASSAGE: {chunk.text}")
+            print("\n" + "=" * 80)
+            print(
+                f"PASSAGE: {chunk.text[:200]}..."
+                if len(chunk.text) > 200
+                else f"PASSAGE: {chunk.text}"
+            )
             print(f"REFERENCE: [{reference}]")
             print(f"BEST MATCH: {best_match[0]} (similarity: {best_match[1]:.4f})")
             print("ALL SIMILARITIES:")
-            for char, sim in sorted(similarities.items(), key=lambda x: x[1], reverse=True):
+            for char, sim in sorted(
+                similarities.items(), key=lambda x: x[1], reverse=True
+            ):
                 print(f"  - {char}: {sim:.4f}")
-            print("="*80)
-            
+            print("=" * 80)
+
         results.append(result)
 
     # Create output directory
