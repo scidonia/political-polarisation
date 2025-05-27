@@ -628,9 +628,13 @@ def analyze_story_characters(story_path, characters_csv, model_name=None, debug=
 
     for reference, chunk in all_references:
         # Create embedding for the chunk with context about the reference
-        task = "Identify which character this reference refers to in the following passage"
+        task = (
+            "Identify which character this reference refers to in the following passage"
+        )
         prompt = f"Instruct: {task}\nReference '[{reference}]' appears in this passage. Determine which character this reference is pointing to based on context, actions, and attributes described."
-        chunk_embedding = model.encode(chunk.text, prompt=prompt, convert_to_tensor=True)
+        chunk_embedding = model.encode(
+            chunk.text, prompt=prompt, convert_to_tensor=True
+        )
         chunk_embedding = F.normalize(chunk_embedding, p=2, dim=0)
 
         # Compare with each character embedding
